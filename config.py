@@ -1,7 +1,7 @@
 STREAMERS = [
     {"name": "kai_cenat"},
     {"name": "ishowspeed"},
-    {"name": "anyme"},
+    {"name": "anyme023"},
 ]
 
 # Détection de spike
