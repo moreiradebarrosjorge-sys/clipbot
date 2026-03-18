@@ -1,0 +1,49 @@
+import asyncio
+import os
+from chat_monitor import ChatMonitor
+from clipper import Clipper
+from config import STREAMERS
+
+GDRIVE_CREDENTIALS = os.path.expanduser("~/clipbot_credentials.json")
+
+
+async def main():
+    print("=" * 50)
+    print("  ClipBot — démarrage")
+    print("=" * 50)
+
+    # Initialisation du clipper et de Google Drive
+    clipper = Clipper()
+    if os.path.exists(GDRIVE_CREDENTIALS):
+        clipper.init_gdrive(GDRIVE_CREDENTIALS)
+    else:
+        print(f"[Attention] Fichier credentials Google Drive introuvable : {GDRIVE_CREDENTIALS}")
+        print("  Les clips seront sauvegardés temporairement dans /tmp/clipbot/")
+
+    # Callback appelé par chaque ChatMonitor lors d'un spike
+    async def on_spike(streamer_name: str, rate: float):
+        await clipper.handle_spike(streamer_name, rate)
+
+    # Lancement d'un monitor par streameur en parallèle
+    monitors = [ChatMonitor(s, on_spike) for s in STREAMERS]
+    tasks    = [asyncio.create_task(m.start()) for m in monitors]
+
+    print(f"[ClipBot] {len(monitors)} streameur(s) surveillé(s) : {[s['name'] for s in STREAMERS]}")
+    print("[ClipBot] En attente de spikes... (Ctrl+C pour arrêter)\n")
+
+    try:
+        await asyncio.gather(*tasks)
+    except asyncio.CancelledError:
+        pass
+    except KeyboardInterrupt:
+        print("\n[ClipBot] Arrêt demandé.")
+    finally:
+        for m in monitors:
+            m.stop()
+        for t in tasks:
+            t.cancel()
+        print("[ClipBot] Arrêté proprement.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
