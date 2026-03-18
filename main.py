@@ -4,7 +4,17 @@ from chat_monitor import ChatMonitor
 from clipper import Clipper
 from config import STREAMERS
 
-GDRIVE_CREDENTIALS = os.path.expanduser("~/clipbot_credentials.json")
+import json
+import tempfile
+
+gdrive_json = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+if gdrive_json:
+    tmp = tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False)
+    tmp.write(gdrive_json)
+    tmp.close()
+    GDRIVE_CREDENTIALS = tmp.name
+else:
+    GDRIVE_CREDENTIALS = os.path.expanduser("~/clipbot_credentials.json")
 
 
 async def main():
