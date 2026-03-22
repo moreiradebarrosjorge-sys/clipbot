@@ -10,20 +10,12 @@ from config import (
 
 
 class ChatMonitor:
-    """
-    Surveille le chat Twitch d'un streameur en temps réel.
-    Détecte les spikes de messages et appelle on_spike() en cas de déclenchement.
-    """
-
     def __init__(self, streamer: dict, on_spike):
         self.name       = streamer["name"]
         self.on_spike   = on_spike
         self.timestamps = deque()
         self.running    = False
-
-    # ------------------------------------------------------------------ #
-    #  POINT D'ENTRÉE                                                      #
-    # ------------------------------------------------------------------ #
+        self.msg_count  = 0
 
     async def start(self):
         self.running = True
@@ -36,10 +28,6 @@ class ChatMonitor:
 
     def stop(self):
         self.running = False
-
-    # ------------------------------------------------------------------ #
-    #  TWITCH IRC                                                          #
-    # ------------------------------------------------------------------ #
 
     async def _connect_twitch(self):
         uri = "wss://irc-ws.chat.twitch.tv:443"
@@ -57,32 +45,28 @@ class ChatMonitor:
                     continue
                 if "PRIVMSG" in raw:
                     message = self._parse_twitch_message(raw)
+                    self.msg_count += 1
+                    if self.msg_count % 100 == 0:
+                        print(f"[{self.name}] {self.msg_count} messages reçus au total")
                     self._register_message(message)
 
     def _parse_twitch_message(self, raw: str) -> str:
         match = re.search(r"PRIVMSG #\w+ :(.+)", raw)
         return match.group(1).strip() if match else ""
 
-    # ------------------------------------------------------------------ #
-    #  DÉTECTION DE SPIKE                                                  #
-    # ------------------------------------------------------------------ #
-
     def _register_message(self, message: str):
         now = time.time()
         self.timestamps.append(now)
 
-        # Purger les messages hors de la fenêtre glissante
         cutoff = now - SPIKE_WINDOW_SEC
         while self.timestamps and self.timestamps[0] < cutoff:
             self.timestamps.popleft()
 
-        # Calcul du taux de messages par seconde
         rate = len(self.timestamps) / SPIKE_WINDOW_SEC
-
-        # Bonus si les messages contiennent des mots-clés de réaction
         keyword_boost = self._count_keywords(message)
 
         if rate >= SPIKE_THRESHOLD or (rate >= SPIKE_THRESHOLD * 0.7 and keyword_boost > 0):
+            print(f"[{self.name}] SPIKE DETECTE — {rate:.0f} msg/s — déclenchement clip")
             asyncio.create_task(self.on_spike(self.name, rate))
             self.timestamps.clear()
 
