@@ -5,8 +5,8 @@ STREAMERS = [
 ]
 
 # Détection de spike
-SPIKE_THRESHOLD    = 800   # messages/seconde pour déclencher un clip
-SPIKE_WINDOW_SEC   = 4     # fenêtre glissante d'analyse (secondes)
+SPIKE_THRESHOLD = 100
+SPIKE_WINDOW_SEC = 4
 
 # Mots-clés de réaction — le programme détecte si un message CONTIENT
 # l'un de ces termes (pas besoin de correspondance exacte).
